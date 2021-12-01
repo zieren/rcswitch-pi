@@ -1,12 +1,12 @@
 /*
   RCSwitch - Arduino libary for remote control outlet switches
   Copyright (c) 2011 Suat Özgür.  All right reserved.
-  
+
   Contributors:
   - Andre Koehler / info(at)tomate-online(dot)de
   - Gordeev Andrey Vladimirovich / gordeev(at)openpyro(dot)com
   - Skineffect / http://forum.ardumote.com/viewtopic.php?f=2&t=48
-  
+
   Project home: http://code.google.com/p/rc-switch/
 
   This library is free software; you can redistribute it and/or
@@ -32,6 +32,7 @@ unsigned int RCSwitch::nReceivedDelay = 0;
 unsigned int RCSwitch::nReceivedProtocol = 0;
 unsigned int RCSwitch::timings[RCSWITCH_MAX_CHANGES];
 int RCSwitch::nReceiveTolerance = 60;
+char NULL_CHAR = '\0';
 
 RCSwitch::RCSwitch() {
   this->nReceiverInterrupt = -1;
@@ -90,7 +91,7 @@ void RCSwitch::setRepeatTransmit(int nRepeatTransmit) {
 void RCSwitch::setReceiveTolerance(int nPercent) {
   RCSwitch::nReceiveTolerance = nPercent;
 }
-  
+
 
 /**
  * Enable transmissions
@@ -190,10 +191,10 @@ void RCSwitch::switchOff(char* sGroup, int nChannel) {
 char* RCSwitch::getCodeWordB(int nAddressCode, int nChannelCode, boolean bStatus) {
    int nReturnPos = 0;
    static char sReturn[13];
-   
-   char* code[5] = { "FFFF", "0FFF", "F0FF", "FF0F", "FFF0" };
+
+   const char* code[5] = { "FFFF", "0FFF", "F0FF", "FF0F", "FFF0" };
    if (nAddressCode < 1 || nAddressCode > 4 || nChannelCode < 1 || nChannelCode > 4) {
-    return '\0';
+    return &NULL_CHAR;
    }
    for (int i = 0; i<4; i++) {
      sReturn[nReturnPos++] = code[nAddressCode][i];
@@ -202,19 +203,19 @@ char* RCSwitch::getCodeWordB(int nAddressCode, int nChannelCode, boolean bStatus
    for (int i = 0; i<4; i++) {
      sReturn[nReturnPos++] = code[nChannelCode][i];
    }
-   
+
    sReturn[nReturnPos++] = 'F';
    sReturn[nReturnPos++] = 'F';
    sReturn[nReturnPos++] = 'F';
-   
+
    if (bStatus) {
       sReturn[nReturnPos++] = 'F';
    } else {
       sReturn[nReturnPos++] = '0';
    }
-   
+
    sReturn[nReturnPos] = '\0';
-   
+
    return sReturn;
 }
 
@@ -226,26 +227,26 @@ char* RCSwitch::getCodeWordA(char* sGroup, int nChannelCode, boolean bStatus) {
    int nReturnPos = 0;
    static char sReturn[13];
 
-  char* code[6] = { "FFFFF", "0FFFF", "F0FFF", "FF0FF", "FFF0F", "FFFF0" };
+  const char* code[6] = { "FFFFF", "0FFFF", "F0FFF", "FF0FF", "FFF0F", "FFFF0" };
 
   if (nChannelCode < 1 || nChannelCode > 5) {
-      return '\0';
+      return &NULL_CHAR;
   }
-  
+
   for (int i = 0; i<5; i++) {
     if (sGroup[i] == '0') {
       sReturn[nReturnPos++] = 'F';
     } else if (sGroup[i] == '1') {
       sReturn[nReturnPos++] = '0';
     } else {
-      return '\0';
+      return &NULL_CHAR;
     }
   }
-  
+
   for (int i = 0; i<5; i++) {
     sReturn[nReturnPos++] = code[ nChannelCode ][i];
   }
-  
+
   if (bStatus) {
     sReturn[nReturnPos++] = '0';
     sReturn[nReturnPos++] = 'F';
@@ -264,11 +265,11 @@ char* RCSwitch::getCodeWordA(char* sGroup, int nChannelCode, boolean bStatus) {
 char* RCSwitch::getCodeWordC(char sFamily, int nGroup, int nDevice, boolean bStatus) {
   static char sReturn[13];
   int nReturnPos = 0;
-  
+
   if ( (byte)sFamily < 97 || (byte)sFamily > 112 || nGroup < 1 || nGroup > 4 || nDevice < 1 || nDevice > 4) {
-    return '\0';
+    return &NULL_CHAR;
   }
-  
+
   char* sDeviceGroupCode =  dec2binWzerofill(  (nDevice-1) + (nGroup-1)*4, 4  );
   char familycode[16][5] = { "0000", "F000", "0F00", "FF00", "00F0", "F0F0", "0FF0", "FFF0", "000F", "F00F", "0F0F", "FF0F", "00FF", "F0FF", "0FFF", "FFFF" };
   for (int i = 0; i<4; i++) {
@@ -310,7 +311,7 @@ void RCSwitch::sendTriState(char* sCodeWord) {
       }
       i++;
     }
-    this->sendSync();    
+    this->sendSync();
   }
 }
 
@@ -355,9 +356,9 @@ void RCSwitch::transmit(int nHighPulses, int nLowPulses) {
 }
 /**
  * Sends a "0" Bit
- *                       _    
+ *                       _
  * Waveform Protocol 1: | |___
- *                       _  
+ *                       _
  * Waveform Protocol 2: | |__
  */
 void RCSwitch::send0() {
@@ -371,9 +372,9 @@ void RCSwitch::send0() {
 
 /**
  * Sends a "1" Bit
- *                       ___  
+ *                       ___
  * Waveform Protocol 1: |   |_
- *                       __  
+ *                       __
  * Waveform Protocol 2: |  |_
  */
 void RCSwitch::send1() {
@@ -487,13 +488,13 @@ unsigned int* RCSwitch::getReceivedRawdata() {
  *
  */
 bool RCSwitch::receiveProtocol1(unsigned int changeCount){
-    
+
 	  unsigned long code = 0;
       unsigned long delay = RCSwitch::timings[0] / 31;
-      unsigned long delayTolerance = delay * RCSwitch::nReceiveTolerance * 0.01;    
+      unsigned long delayTolerance = delay * RCSwitch::nReceiveTolerance * 0.01;
 
       for (int i = 1; i<changeCount ; i=i+2) {
-      
+
           if (RCSwitch::timings[i] > delay-delayTolerance && RCSwitch::timings[i] < delay+delayTolerance && RCSwitch::timings[i+1] > delay*3-delayTolerance && RCSwitch::timings[i+1] < delay*3+delayTolerance) {
             code = code << 1;
           } else if (RCSwitch::timings[i] > delay*3-delayTolerance && RCSwitch::timings[i] < delay*3+delayTolerance && RCSwitch::timings[i+1] > delay-delayTolerance && RCSwitch::timings[i+1] < delay+delayTolerance) {
@@ -504,7 +505,7 @@ bool RCSwitch::receiveProtocol1(unsigned int changeCount){
             i = changeCount;
             code = 0;
           }
-      }      
+      }
       code = code >> 1;
     if (changeCount > 6) {    // ignore < 4bit values as there are no devices sending 4bit values => noise
       RCSwitch::nReceivedValue = code;
@@ -513,23 +514,17 @@ bool RCSwitch::receiveProtocol1(unsigned int changeCount){
 	  RCSwitch::nReceivedProtocol = 1;
     }
 
-	if (code == 0){
-		return false;
-	}else if (code != 0){
-		return true;
-	}
-	
-
+    return code != 0;
 }
 
 bool RCSwitch::receiveProtocol2(unsigned int changeCount){
-    
+
 	  unsigned long code = 0;
       unsigned long delay = RCSwitch::timings[0] / 10;
-      unsigned long delayTolerance = delay * RCSwitch::nReceiveTolerance * 0.01;    
+      unsigned long delayTolerance = delay * RCSwitch::nReceiveTolerance * 0.01;
 
       for (int i = 1; i<changeCount ; i=i+2) {
-      
+
           if (RCSwitch::timings[i] > delay-delayTolerance && RCSwitch::timings[i] < delay+delayTolerance && RCSwitch::timings[i+1] > delay*2-delayTolerance && RCSwitch::timings[i+1] < delay*2+delayTolerance) {
             code = code << 1;
           } else if (RCSwitch::timings[i] > delay*2-delayTolerance && RCSwitch::timings[i] < delay*2+delayTolerance && RCSwitch::timings[i+1] > delay-delayTolerance && RCSwitch::timings[i+1] < delay+delayTolerance) {
@@ -540,7 +535,7 @@ bool RCSwitch::receiveProtocol2(unsigned int changeCount){
             i = changeCount;
             code = 0;
           }
-      }      
+      }
       code = code >> 1;
     if (changeCount > 6) {    // ignore < 4bit values as there are no devices sending 4bit values => noise
       RCSwitch::nReceivedValue = code;
@@ -549,12 +544,7 @@ bool RCSwitch::receiveProtocol2(unsigned int changeCount){
 	  RCSwitch::nReceivedProtocol = 2;
     }
 
-	if (code == 0){
-		return false;
-	}else if (code != 0){
-		return true;
-	}
-
+    return code != 0;
 }
 
 /**
@@ -577,7 +567,7 @@ char* RCSwitch::dec2binWzerofill(unsigned long Dec, unsigned int bitLength){
     }
   }
   bin[bitLength] = '\0';
-  
+
   return bin;
 }
 
